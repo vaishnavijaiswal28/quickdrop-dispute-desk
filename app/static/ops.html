@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuickDrop - Ops Dispute Dashboard</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #38bdf8;
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+            --border: #334155;
+            --success: #22c55e;
+            --danger: #ef4444;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 24px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .badge {
+            background: #334155;
+            color: var(--accent);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .rider-id {
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        .actions {
+            margin-top: 16px;
+            display: flex;
+            gap: 8px;
+        }
+
+        button {
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: none;
+            font-weight: 500;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.85; }
+
+        .btn-approve { background: var(--success); color: #fff; }
+        .btn-reject { background: var(--danger); color: #fff; }
+
+        .note-todo {
+            font-size: 12px;
+            color: var(--text-sub);
+            margin-top: 24px;
+            text-align: center;
+            border-top: 1px dashed var(--border);
+            padding-top: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>QuickDrop Ops Dispute Desk</h1>
+            <div class="badge" id="pending-count">Loading...</div>
+        </header>
+
+        <div id="pending-list">
+            <!-- Pending items loaded dynamically via GET /ops/pending -->
+        </div>
+
+        <div class="note-todo">
+            ⚙️ <strong>Ops UI Foundation</strong>: Additional policy-specific dispute columns will be rendered once <code>docs/policy.md</code> & repository schema are provided.
+        </div>
+    </div>
+
+    <script>
+        async function fetchPendingOps() {
+            try {
+                const res = await fetch('/ops/pending');
+                const data = await res.json();
+                document.getElementById('pending-count').innerText = `${data.total_pending} Pending Items`;
+                
+                const list = document.getElementById('pending-list');
+                list.innerHTML = '';
+
+                if (data.items.length === 0) {
+                    list.innerHTML = '<div class="card" style="text-align:center; color: var(--text-sub);">No pending Ops approvals or escalations.</div>';
+                    return;
+                }
+
+                data.items.forEach(item => {
+                    const el = document.createElement('div');
+                    el.className = 'card';
+                    el.innerHTML = `
+                        <div class="item-header">
+                            <div>
+                                <span class="rider-id">Rider: ${item.rider_id}</span>
+                                <span style="margin-left:8px; font-size:12px; color:var(--text-sub);">[${item.type}]</span>
+                            </div>
+                            <span class="badge">${item.status}</span>
+                        </div>
+                        <div><strong>Reason / Notes:</strong> ${item.reason_or_notes || 'N/A'}</div>
+                        <div style="font-size:12px; color:var(--text-sub); margin-top:8px;">Dispute ID: ${item.dispute_id || 'N/A'} | Created: ${new Date(item.created_at).toLocaleString()}</div>
+                        <div class="actions">
+                            <button class="btn-approve" onclick="resolveItem('${item.id}', 'APPROVE')">Approve</button>
+                            <button class="btn-reject" onclick="resolveItem('${item.id}', 'REJECT')">Reject</button>
+                        </div>
+                    `;
+                    list.appendChild(el);
+                });
+            } catch (err) {
+                console.error("Error loading pending ops:", err);
+            }
+        }
+
+        async function resolveItem(itemId, action) {
+            await fetch('/ops/resolve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ item_id: itemId, ops_user_id: 'ops_admin', action: action, notes: 'Resolved from Ops Dashboard' })
+            });
+            fetchPendingOps();
+        }
+
+        fetchPendingOps();
+    </script>
+</body>
+</html>

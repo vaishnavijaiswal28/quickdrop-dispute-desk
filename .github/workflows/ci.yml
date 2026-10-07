@@ -1,0 +1,57 @@
+name: QuickDrop CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  test-and-eval:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: quickdrop_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Pytest Suite
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/quickdrop_db
+          DATABASE_SYNC_URL: postgresql://postgres:postgres@localhost:5432/quickdrop_db
+          PAYSWIFT_BASE_URL: http://localhost:8081
+          DEBUG: "True"
+        run: |
+          pytest -v
+
+      - name: Build and Start PaySwift Sandbox & App
+        run: |
+          docker compose build
+          docker compose up -d
+
+      - name: Run Evaluation Suite
+        run: |
+          python evals/run.py http://localhost:8000
