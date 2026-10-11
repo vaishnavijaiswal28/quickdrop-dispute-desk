@@ -1,7 +1,32 @@
+# Environment & Secrets
 .env
-.venv/
-node_modules/
+.env*.local
+!.env.example
+
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.venv/
+env/
+venv/
+
+# Databases
 *.db
+*.sqlite
+*.sqlite3
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Archives & Binaries
+*.zip
+*.tar.gz
+
+# Scratch & Temporary
 scratch/
+.DS_Store
+Thumbs.db
